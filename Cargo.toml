@@ -1,0 +1,19 @@
+[package]
+name = "libfdt-rs"
+description = "A library for handling FDT binaries based on libfdt."
+authors = ["Romain Malmain <rmalmain@pm.me>"]
+version = "0.0.1"
+edition = "2024"
+license-file = "LICENSE"
+repository = "https://github.com/rmalmain/libfdt-rs"
+keywords = ["libfdt", "dtc", "dt", "devicetree", "fdt"]
+categories = ["api-bindings"]
+
+[features]
+default=["std"]
+
+std=[]
+
+[dependencies]
+libfdt-sys = { version = "0.0.2", features = ["static"] }
+log = "0.4.27"
