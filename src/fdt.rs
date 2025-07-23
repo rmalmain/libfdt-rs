@@ -27,12 +27,24 @@ use std::{
 use core::str::FromStr;
 
 #[cfg(not(feature = "std"))]
-use alloc::{collections::BTreeSet as HashSet, vec::Vec};
+use alloc::{
+    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
+    vec::Vec,
+};
 
 use core::fmt;
 #[cfg(feature = "std")]
-use std::{collections::HashSet, vec::Vec};
+use std::{
+    collections::{HashMap, HashSet},
+    vec::Vec,
+};
 
+const SYMBOL_TABLE_PATH: &'static str = "/__symbols__";
+
+/// # Fdt
+///
+/// A wrapper for an `FDT` binary.
+/// This is the first object to instantiate to manipulate FDT binaries.
 pub struct Fdt {
     _inner: Pin<Box<[u8]>>,
     // inner is pinned, so we can store a raw pointer to the fdt safely.
@@ -68,8 +80,10 @@ impl TryFrom<u32> for Phandle {
 }
 
 impl Fdt {
-    pub fn new(fdt: &[u8]) -> Result<Fdt, Error> {
-        let mut inner: Pin<Box<[u8]>> = Pin::new(Box::from(fdt));
+    /// Create a new [`Fdt`] from its binary representation.
+    /// The binary is not copied.
+    pub fn new(fdt: Box<[u8]>) -> Result<Fdt, Error> {
+        let mut inner: Pin<Box<[u8]>> = Pin::new(fdt);
         let fdt: *mut c_void = inner.deref_mut().as_mut_ptr() as *mut c_void;
 
         unsafe {
@@ -96,6 +110,7 @@ impl Fdt {
         })
     }
 
+    /// Get the offset of a node, given its path.
     pub fn path_offset(&self, path: &str) -> Result<Offset, Error> {
         let path_cstr = CString::from_str(path).unwrap();
 
@@ -107,6 +122,10 @@ impl Fdt {
         }
     }
 
+    /// Get the first property of a node, given its offset.
+    ///
+    /// This is mostly useful to iterate over the properties of a node.
+    /// Please check [`FdtNode::properties_iter`] and the documentation of [`crate::FdtPropertyIter`] if you are looking for a property iterator.
     pub fn first_property_offset(&self, nodeoffset: Offset) -> Result<Offset, Error> {
         unsafe {
             Ok(Offset(Error::parse(
@@ -115,6 +134,10 @@ impl Fdt {
         }
     }
 
+    /// Get the first property of an [`FdtNode`].
+    ///
+    /// This is mostly useful to iterate over the properties of a node.
+    /// Please check [`FdtNode::properties_iter`] and the documentation of [`crate::FdtPropertyIter`] if you are looking for a property iterator.
     pub fn first_property<'fdt>(
         &'fdt self,
         node: &FdtNode<'fdt>,
@@ -126,6 +149,10 @@ impl Fdt {
         }
     }
 
+    /// Get the next property of a node, given its offset.
+    ///
+    /// This is mostly useful to iterate over the properties of a node.
+    /// Please check [`FdtNode::properties_iter`] and the documentation of [`crate::FdtPropertyIter`] if you are looking for a property iterator.
     pub fn next_property_offset(&self, offset: Offset) -> Result<Offset, Error> {
         unsafe {
             Ok(Offset(Error::parse(libfdt_sys::fdt_next_property_offset(
@@ -134,6 +161,10 @@ impl Fdt {
         }
     }
 
+    /// Get the next property of an [`FdtNode`].
+    ///
+    /// This is mostly useful to iterate over the properties of a node.
+    /// Please check [`FdtNode::properties_iter`] and the documentation of [`crate::FdtPropertyIter`] if you are looking for a property iterator.
     pub fn next_property<'fdt>(
         &'fdt self,
         property: &FdtProperty<'fdt>,
@@ -145,6 +176,10 @@ impl Fdt {
         }
     }
 
+    /// Get the first subnode of a node, given its offset.
+    ///
+    /// This is mostly useful to iterate over the subnodes of a node.
+    /// Please check [`FdtNode::subnodes_iter`] and the documentation of [`crate::FdtNodeIter`] if you are looking for a subnode iterator.
     pub fn first_subnode_offset(&self, offset: Offset) -> Result<Offset, Error> {
         unsafe {
             Ok(Offset(Error::parse(libfdt_sys::fdt_first_subnode(
@@ -153,6 +188,10 @@ impl Fdt {
         }
     }
 
+    /// Get the first subnode of a [`FdtNode`].
+    ///
+    /// This is mostly useful to iterate over the subnodes of a node.
+    /// Please check [`FdtNode::subnodes_iter`] and the documentation of [`crate::FdtNodeIter`] if you are looking for a subnode iterator.
     pub fn first_subnode<'fdt>(
         &'fdt self,
         parent_node: &FdtNode<'fdt>,
@@ -164,6 +203,10 @@ impl Fdt {
         }
     }
 
+    /// Get the next subnode of a node, given its offset.
+    ///
+    /// This is mostly useful to iterate over the subnodes of a node.
+    /// Please check [`FdtNode::subnodes_iter`] and the documentation of [`crate::FdtNodeIter`] if you are looking for a subnode iterator.
     pub fn next_subnode_offset(&self, offset: Offset) -> Result<Offset, Error> {
         unsafe {
             Ok(Offset(Error::parse(libfdt_sys::fdt_next_subnode(
@@ -172,6 +215,10 @@ impl Fdt {
         }
     }
 
+    /// Get the next subnode of a [`FdtNode`].
+    ///
+    /// This is mostly useful to iterate over the subnodes of a node.
+    /// Please check [`FdtNode::subnodes_iter`] and the documentation of [`crate::FdtNodeIter`] if you are looking for a subnode iterator.
     pub fn next_subnode<'fdt>(
         &'fdt self,
         previous_node: &FdtNode<'fdt>,
@@ -183,6 +230,7 @@ impl Fdt {
         }
     }
 
+    /// Get an [`FdtNode`] from its offset in the [`Fdt`]
     pub fn get_node_by_offset<'fdt>(
         &'fdt self,
         nodeoffset: Offset,
@@ -204,6 +252,7 @@ impl Fdt {
         })
     }
 
+    /// Get an [`FdtProperty`] from its offset in the [`Fdt`]
     pub fn get_property_by_offset<'fdt>(
         &'fdt self,
         offset: Offset,
@@ -231,6 +280,7 @@ impl Fdt {
         })
     }
 
+    /// Get an [`FdtProperty`] given its parent node and its name.
     pub fn get_property<'fdt>(
         &'fdt self,
         node: &FdtNode<'fdt>,
@@ -256,10 +306,16 @@ impl Fdt {
         })
     }
 
+    /// Get the phandle of a given [`FdtNode`].
+    ///
+    /// Returns [`Error::BadPhandle`] if not phandle property is attached to the input node
     pub fn get_phandle<'fdt>(&'fdt self, node: &FdtNode<'fdt>) -> Result<Phandle, Error> {
         unsafe { Phandle::try_from(libfdt_sys::fdt_get_phandle(self.fdt, node.offset.0)) }
     }
 
+    /// Determines if the input compatible string matches with the 'compatible' property of a given node.
+    ///
+    /// Returns [`Error::NotFound`] if not compatible property is attached to the input node
     pub fn is_compatible<'fdt>(
         &'fdt self,
         node: &FdtNode<'fdt>,
@@ -278,6 +334,7 @@ impl Fdt {
         Ok(res == 0)
     }
 
+    /// Get the [`FdtNode`] associated with the input path.
     pub fn get_node<'fdt>(&'fdt self, path: &str) -> Result<FdtNode<'fdt>, Error> {
         let path_str = CString::from_str(path).unwrap();
 
@@ -291,6 +348,7 @@ impl Fdt {
         self.get_node_by_offset(offset)
     }
 
+    /// Get the [`FdtNode`] associated with the given phandle.
     pub fn get_node_by_phandle<'fdt>(
         &'fdt self,
         phandle: &Phandle,
@@ -301,25 +359,31 @@ impl Fdt {
         self.get_node_by_offset(Offset(nodeoffset))
     }
 
+    /// Get the full path of an [`FdtNodeRef`].
+    ///
+    /// It is particularly useful for parsing symbol tables in the [`Fdt`].
     pub fn as_path<'fdt>(&'fdt self, node_ref: &'fdt FdtNodeRef) -> Result<&'fdt str, Error> {
         match node_ref {
             FdtNodeRef::Path(path) => Ok(path.as_str()),
             FdtNodeRef::Symbol(symbol) => {
-                let snode = self.get_node("/__symbols__")?;
+                let snode = self.get_node(SYMBOL_TABLE_PATH)?;
                 let sprop = snode.get_property(symbol)?;
                 unsafe { Ok(sprop.data_as_str()) }
             }
         }
     }
 
-    pub fn symbols(&self) -> Result<HashSet<String>, Error> {
-        let mut symbols = HashSet::new();
-        let snode = self.get_node("/__symbols__")?;
+    /// Get the symbol table of the [`Fdt`] as a [`HashMap`], where the symbols are the keys
+    /// and the associated (full) paths are the values.
+    pub fn symbol_table(&self) -> Result<HashMap<String, String>, Error> {
+        let mut symbol_table = HashMap::new();
+        let snode = self.get_node(SYMBOL_TABLE_PATH)?;
+
         for prop in snode.properties_iter()? {
             let s = unsafe { prop.data_as_str() };
-            symbols.insert(s.to_string());
+            symbol_table.insert(prop.name().to_string(), s.to_string());
         }
 
-        Ok(symbols)
+        Ok(symbol_table)
     }
 }

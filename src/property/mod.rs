@@ -53,6 +53,13 @@ pub struct FdtProperty<'fdt> {
     pub(crate) offset: Option<Offset>,
 }
 
+/// A link between two nodes.
+///
+/// These links originate from phandle references.
+/// The way these phandles are parsed is not fully specified by the `devicetree` specification.
+/// Vendors, kernels, bootloaders can have different conventions when it comes to phandle parsing.
+///
+/// For now, only Linux kernel links are supported.
 #[derive(Debug, Clone)]
 pub struct PhandleLink {
     pub name: &'static str,
@@ -161,11 +168,14 @@ impl<'fdt> FdtProperty<'fdt> {
         }
     }
 
+    /// Get the name of the property.
     pub fn name(&self) -> &str {
         let cstr = self.name.as_c_str();
         cstr.to_str().unwrap()
     }
 
+    /// Given a link name (as registered by [`Fdt`]), give the [`PhandleLink`] if there is one.
+    /// If no link exists, return [`None`].
     fn get_link(&self, name: &str) -> Option<&PhandleLink> {
         if let Some(prop) = self.fdt.links_simple.get(name) {
             return Some(prop);
@@ -177,7 +187,8 @@ impl<'fdt> FdtProperty<'fdt> {
             .find(|suffix| name.ends_with(suffix.name))
     }
 
-    // get a list of nodes linked to the property, if it's supposed to contain phandles
+    /// Get a list of nodes linked to the property, if it is supposed to contain phandles.
+    /// The [`Fdt`] in which the property lives contains the list of possible links.
     pub fn links(&self) -> Result<Option<Vec<FdtNode<'fdt>>>, Error> {
         let name = self.name();
 

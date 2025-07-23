@@ -10,6 +10,7 @@ use std::string::{String, ToString};
 #[cfg(not(feature = "std"))]
 use alloc::string::{String, ToString};
 
+/// Node representation in an [`Fdt`].
 #[derive(Debug, Clone)]
 pub struct FdtNode<'fdt> {
     pub(crate) fdt: &'fdt Fdt,
@@ -17,6 +18,10 @@ pub struct FdtNode<'fdt> {
     pub(crate) name: &'fdt CStr,
 }
 
+/// A node reference in an [`Fdt`].
+/// There are two possible references:
+///     - [`FdtNodeRef::Path`]: a full path to a node.
+///     - [`FdtNodeRef::Symbol`]: a symbol pointing to a node.
 #[derive(Debug)]
 pub enum FdtNodeRef {
     Path(String),
@@ -44,26 +49,32 @@ impl<'fdt> Hash for FdtNode<'fdt> {
 }
 
 impl<'fdt> FdtNode<'fdt> {
+    /// Get the [`Fdt`] in which the node lives.
     pub fn fdt(&self) -> &'fdt Fdt {
         self.fdt
     }
 
+    /// Get the offset in the [`Fdt`] of the node.
     pub fn offset(&self) -> Offset {
         self.offset
     }
 
+    /// Get an iterator over the subnodes of the node.
     pub fn subnodes_iter(&self) -> Result<FdtNodeIter<'fdt>, Error> {
         FdtNodeIter::new(self)
     }
 
+    /// Get an iterator over the properties of the node.
     pub fn properties_iter(&self) -> Result<FdtPropertyIter<'fdt>, Error> {
         FdtPropertyIter::new(self)
     }
 
+    /// Get the name of the node.
     pub fn name(&self) -> &str {
         self.name.to_str().unwrap()
     }
 
+    /// Get the path in the [`Fdt`] of the node.
     pub fn path(&self) -> Result<String, Error> {
         let mut str_buf: [c_char; 2048] = [0; 2048];
 
@@ -82,7 +93,8 @@ impl<'fdt> FdtNode<'fdt> {
         Ok(s.to_string())
     }
 
-    pub fn get_property(&self, prop_name: &str) -> Result<FdtProperty<'fdt>, Error> {
-        self.fdt.get_property(self, prop_name)
+    /// Get a property in the node given its name.
+    pub fn get_property(&self, property_name: &str) -> Result<FdtProperty<'fdt>, Error> {
+        self.fdt.get_property(self, property_name)
     }
 }

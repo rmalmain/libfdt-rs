@@ -1,17 +1,20 @@
 use crate::error::Error;
 use crate::{Fdt, FdtNode, FdtProperty};
 
+/// An iterator over the subnodes of a parent node.
 pub struct FdtNodeIter<'fdt> {
     fdt: &'fdt Fdt,
     next: Option<FdtNode<'fdt>>,
 }
 
+/// An iterator over the properties of a node.
 pub struct FdtPropertyIter<'fdt> {
     fdt: &'fdt Fdt,
     next: Option<FdtProperty<'fdt>>,
 }
 
 impl<'fdt> FdtNodeIter<'fdt> {
+    /// Create a new [`FdtNodeIter`] iterator, given the parent node.
     pub fn new(node: &FdtNode<'fdt>) -> Result<Self, Error> {
         Ok(Self {
             fdt: node.fdt,
@@ -21,6 +24,7 @@ impl<'fdt> FdtNodeIter<'fdt> {
 }
 
 impl<'fdt> FdtPropertyIter<'fdt> {
+    /// Create a new [`FdtPropertyIter`] iterator, given the parent node.
     pub fn new(node: &FdtNode<'fdt>) -> Result<Self, Error> {
         Ok(Self {
             fdt: node.fdt,

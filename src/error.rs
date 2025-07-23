@@ -1,3 +1,5 @@
+/// The possible errors `libfdt` can output.
+/// It is a 1-to-1 translation of error`libfdt` can issue.
 #[derive(Debug, Clone)]
 pub enum Error {
     /// The requested node or property does not exist

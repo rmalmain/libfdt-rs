@@ -32,7 +32,7 @@
 //! use libfdt_rs::Fdt;
 //!
 //! let fdt_bin = fs::read("dtb/zuma-a0-foplp.dtb").unwrap();
-//! let fdt = Fdt::new(&fdt_bin).unwrap();
+//! let fdt = Fdt::new(fdt_bin.into_boxed_slice()).unwrap();
 //! let root_node = fdt.get_node("/").unwrap();
 //!
 //! for subnode in root_node.subnodes_iter() {
