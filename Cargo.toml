@@ -15,5 +15,5 @@ default=["std"]
 std=[]
 
 [dependencies]
-libfdt-sys = { version = "0.0.2", features = ["static"] }
-log = "0.4.27"
+libfdt-sys = { version = "0.0.3", features = ["static"] }
+log = "0.4.33"

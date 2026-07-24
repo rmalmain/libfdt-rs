@@ -80,16 +80,7 @@ impl TryFrom<u32> for Phandle {
 }
 
 impl Fdt {
-    /// Create a new [`Fdt`] from its binary representation.
-    /// The binary is not copied.
-    pub fn new(fdt: Box<[u8]>) -> Result<Fdt, Error> {
-        let mut inner: Pin<Box<[u8]>> = Pin::new(fdt);
-        let fdt: *mut c_void = inner.deref_mut().as_mut_ptr() as *mut c_void;
-
-        unsafe {
-            Error::parse(libfdt_sys::fdt_check_header(fdt))?;
-        }
-
+    fn new_from_inner(inner: Pin<Box<[u8]>>, inner_ptr: *mut c_void) -> Result<Self, Error> {
         let links_simple: HashSet<PhandleLink> = PHANDLE_LINKS_SIMPLE
             .iter()
             .flat_map(|links| links.iter())
@@ -104,10 +95,41 @@ impl Fdt {
 
         Ok(Self {
             _inner: inner,
-            fdt,
+            fdt: inner_ptr,
             links_simple,
             links_suffix,
         })
+    }
+
+    /// Create a new [`Fdt`] from its binary representation.
+    /// The binary is not copied.
+    pub fn new(fdt: Box<[u8]>) -> Result<Fdt, Error> {
+        let mut inner: Pin<Box<[u8]>> = Pin::new(fdt);
+        let fdt: *mut c_void = inner.deref_mut().as_mut_ptr() as *mut c_void;
+
+        unsafe {
+            Error::parse(libfdt_sys::fdt_check_header(fdt))?;
+        }
+
+        Self::new_from_inner(inner, fdt)
+    }
+
+    /// Create an empty [`Fdt`], with a maximum size of `size_bytes`.
+    pub fn empty(size_bytes: usize) -> Result<Self, Error> {
+        let size_int: c_int = c_int::try_from(size_bytes).unwrap();
+
+        let mut inner: Box<[MaybeUninit<u8>]> = Box::new_uninit_slice(size_bytes);
+        let inner_ref = inner.as_mut();
+
+        unsafe {
+            Error::parse(libfdt_sys::fdt_create(inner_ref.as_mut_ptr() as *mut c_void, size_int))?;
+        }
+
+        let inner: Box<[u8]> = unsafe { inner.assume_init() };
+        let mut inner: Pin<Box<[u8]>> = Pin::new(inner);
+        let inner_ptr: *mut c_void = inner.deref_mut().as_mut_ptr() as *mut c_void;
+
+        Self::new_from_inner(inner, inner_ptr)
     }
 
     /// Get the offset of a node, given its path.
